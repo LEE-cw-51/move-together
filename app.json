@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "무브 투게더",
+    "slug": "move-together",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "movetogether",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.movetogether",
+      "infoPlist": {
+        "NSCameraUsageDescription": "오늘 운동을 촬영하기 위해 카메라가 필요해요.",
+        "NSPhotoLibraryUsageDescription": "오늘 운동 사진이나 영상을 고르기 위해 사진 보관함 접근이 필요해요.",
+        "NSMicrophoneUsageDescription": "짧은 운동 영상을 고르기 위해 마이크 접근이 필요할 수 있어요."
+      }
+    },
+    "android": {
+      "package": "app.movetogether",
+      "adaptiveIcon": {
+        "backgroundColor": "#F6F1EA",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F6F1EA"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "오늘 운동 사진이나 영상을 고르기 위해 사진 보관함 접근이 필요해요.",
+          "cameraPermission": "오늘 운동을 촬영하기 위해 카메라가 필요해요."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#C46B4A"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false,
+      "reactCompiler": false
+    },
+    "extra": {
+      "router": {}
+    }
+  }
+}
