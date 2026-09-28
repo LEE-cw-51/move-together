@@ -1,9 +1,31 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import type { PublicUser } from "@move-together/shared";
 import { api } from "./api";
 
 const TOKEN_KEY = "move-together.session";
+
+async function readStoredToken(): Promise<string | null> {
+  if (Platform.OS === "web") return globalThis.localStorage.getItem(TOKEN_KEY);
+  return SecureStore.getItemAsync(TOKEN_KEY);
+}
+
+async function writeStoredToken(token: string): Promise<void> {
+  if (Platform.OS === "web") {
+    globalThis.localStorage.setItem(TOKEN_KEY, token);
+    return;
+  }
+  await SecureStore.setItemAsync(TOKEN_KEY, token);
+}
+
+async function clearStoredToken(): Promise<void> {
+  if (Platform.OS === "web") {
+    globalThis.localStorage.removeItem(TOKEN_KEY);
+    return;
+  }
+  await SecureStore.deleteItemAsync(TOKEN_KEY);
+}
 
 type Status = "loading" | "signedOut" | "needsName" | "ready";
 
@@ -33,7 +55,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    SecureStore.getItemAsync(TOKEN_KEY)
+    readStoredToken()
       .then(async (stored) => {
         if (cancelled) return;
         if (!stored) {
@@ -44,7 +66,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           const me = await api<{ user: PublicUser }>("/me", { token: stored });
           if (!cancelled) apply(stored, me.user);
         } catch {
-          await SecureStore.deleteItemAsync(TOKEN_KEY);
+          await clearStoredToken();
           if (!cancelled) apply(null, null);
         }
       })
@@ -62,7 +84,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       token,
       user,
       async signIn(nextToken, nextUser) {
-        await SecureStore.setItemAsync(TOKEN_KEY, nextToken);
+        await writeStoredToken(nextToken);
         apply(nextToken, nextUser);
       },
       setUser(nextUser) {
@@ -70,7 +92,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setStatus(nextUser.needsDisplayName ? "needsName" : "ready");
       },
       async signOut() {
-        await SecureStore.deleteItemAsync(TOKEN_KEY);
+        await clearStoredToken();
         apply(null, null);
       },
     }),
