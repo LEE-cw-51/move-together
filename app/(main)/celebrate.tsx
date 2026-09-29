@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import { markCelebrated } from "@/features/celebration/seen";
 import { workoutLabels } from "@/features/workout/exercises";
 import { Button } from "@/components/Button";
@@ -13,26 +13,74 @@ import { useSession } from "@/lib/session";
 import { motion, spacing } from "@/theme";
 import type { HomeResponse } from "@/types";
 
+function param(value: string | string[] | undefined): string | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw || undefined;
+}
+
 // The core reward: both people moved today. Shown once per Seoul day.
 export default function CelebrateScreen() {
   const { token } = useSession();
+  const navigation = useNavigation();
+  const params = useLocalSearchParams<{ challengeId?: string; seoulDate?: string }>();
   const [home, setHome] = useState<HomeResponse | null>(null);
+  const [ready, setReady] = useState(false);
+  const markedRef = useRef(false);
+  const identityRef = useRef<{ id: string; date: string } | null>(null);
+  const readyRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
-      if (!token) return;
+      if (!token) {
+        setReady(true);
+        return;
+      }
+      let active = true;
       api<HomeResponse>("/home", { token })
-        .then(setHome)
-        .catch(() => undefined);
+        .then((next) => {
+          if (active) setHome(next);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (active) setReady(true);
+        });
+      return () => {
+        active = false;
+      };
     }, [token]),
   );
 
   const challenge = home?.challenge;
   const me = challenge?.members.find((member) => member.isMe);
   const partner = challenge?.members.find((member) => !member.isMe);
+  const challengeId = param(params.challengeId) ?? challenge?.id;
+  const seoulDate = param(params.seoulDate) ?? challenge?.seoulDate;
+  identityRef.current = challengeId && seoulDate ? { id: challengeId, date: seoulDate } : null;
+  readyRef.current = ready || identityRef.current !== null;
+
+  const remember = useCallback(async () => {
+    const identity = identityRef.current;
+    if (markedRef.current || !identity) return;
+    markedRef.current = true;
+    await markCelebrated(identity.id, identity.date);
+  }, []);
+
+  useEffect(() => {
+    return navigation.addListener("beforeRemove", (event) => {
+      if (markedRef.current) return;
+      if (!identityRef.current) {
+        if (!readyRef.current) event.preventDefault();
+        return;
+      }
+      event.preventDefault();
+      void remember().finally(() => {
+        navigation.dispatch(event.data.action);
+      });
+    });
+  }, [navigation, remember]);
 
   async function close() {
-    if (challenge) await markCelebrated(challenge.id, challenge.seoulDate);
+    await remember();
     if (router.canGoBack()) router.back();
     else router.replace("/(main)");
   }
@@ -69,7 +117,7 @@ export default function CelebrateScreen() {
           {challenge ? `함께한 날이 ${challenge.streak}일째예요.` : " "}
         </ThemedText>
       </View>
-      <Button label="좋아요" onPress={close} />
+      <Button label="좋아요" disabled={!ready && !(challengeId && seoulDate)} onPress={close} />
     </Screen>
   );
 }

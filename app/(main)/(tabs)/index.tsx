@@ -32,15 +32,23 @@ export default function TodayScreen() {
     if (!token) return;
     try {
       const next = await api<HomeResponse>("/home", { token });
-      const ids = next.challenge?.members.map((member) => member.today.recordId).filter((id): id is string => !!id) ?? [];
-      const details = await Promise.all(ids.map((id) => api<WorkoutDetail>(`/workouts/${id}`, { token })));
       setHome(next);
-      setRecords(Object.fromEntries(details.map((detail) => [detail.id, detail])));
       setError("");
       const challenge = next.challenge;
-      const bothDone = challenge?.members.length === 2 && challenge.members.every((member) => member.today.completed);
+      const bothDone =
+        !!challenge && challenge.members.length === 2 && challenge.members.every((member) => member.today.completed);
       if (challenge && bothDone && !(await hasCelebrated(challenge.id, challenge.seoulDate))) {
-        router.push("/(main)/celebrate");
+        router.push({
+          pathname: "/(main)/celebrate",
+          params: { challengeId: challenge.id, seoulDate: challenge.seoulDate },
+        });
+      }
+      const ids = challenge?.members.map((member) => member.today.recordId).filter((id): id is string => !!id) ?? [];
+      const settled = await Promise.allSettled(ids.map((id) => api<WorkoutDetail>(`/workouts/${id}`, { token })));
+      const details = settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+      setRecords(Object.fromEntries(details.map((detail) => [detail.id, detail])));
+      if (settled.some((result) => result.status === "rejected")) {
+        setError("운동 기록을 일부 불러오지 못했어요");
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "오늘 상태를 불러오지 못했어요");
