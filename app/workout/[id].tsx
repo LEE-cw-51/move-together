@@ -1,24 +1,24 @@
 import { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { Image } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { exerciseLabels } from "@/features/workout/exercises";
-import { colors } from "@/components/theme";
-import { api } from "@/lib/api";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { dayTitle } from "@/features/history/calendar";
+import { Button } from "@/components/Button";
+import { PersonCard } from "@/components/PersonCard";
+import { ReactionBar } from "@/components/ReactionBar";
+import { ThemedText } from "@/components/ThemedText";
+import { ApiError, api } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { radius, spacing, useColors } from "@/theme";
 import type { ReactionType, WorkoutDetail } from "@/types";
-
-const REACTIONS: { type: ReactionType; label: string }[] = [
-  { type: "heart", label: "하트" },
-  { type: "muscle", label: "근육" },
-  { type: "fire", label: "불" },
-  { type: "clap", label: "박수" },
-];
 
 export default function WorkoutDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { token } = useSession();
+  const colors = useColors();
   const [record, setRecord] = useState<WorkoutDetail | null>(null);
+  const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -33,124 +33,78 @@ export default function WorkoutDetailScreen() {
 
   async function react(type: ReactionType) {
     if (!id) return;
-    await api(`/workouts/${id}/reactions`, { method: "POST", token, body: JSON.stringify({ type }) });
-    await load();
+    try {
+      await api(`/workouts/${id}/reactions`, { method: "POST", token, body: JSON.stringify({ type }) });
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "반응을 남기지 못했어요");
+    }
   }
 
   if (!record) {
     return (
-      <View style={styles.empty}>
-        <Text style={styles.muted}>기록을 불러오는 중</Text>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
+        <ThemedText variant="callout" tone="muted">
+          기록을 불러오는 중
+        </ThemedText>
       </View>
     );
   }
 
+  const mine = !record.canReact;
   return (
-    <ScrollView contentContainerStyle={styles.page}>
-      <Text style={styles.name}>{record.displayName}</Text>
-      <Text style={styles.date}>{record.seoulDate}</Text>
-      <Text style={styles.types}>{exerciseLabels(record.exerciseTypes)}</Text>
+    <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={{ padding: spacing.gutter, gap: spacing.lg }}>
+      <ThemedText variant="subhead" tone="muted">
+        {dayTitle(record.seoulDate)}
+      </ThemedText>
+      <PersonCard
+        who={mine ? "me" : "partner"}
+        name={mine ? "나" : record.displayName}
+        done
+        doneLabel="운동 완료"
+        exerciseTypes={record.exerciseTypes}
+        customLabels={record.customLabels}
+      >
+        <ReactionBar reactions={record.reactions} onReact={record.canReact ? react : undefined} />
+      </PersonCard>
       {record.media.map((item) =>
         item.type === "image" ? (
-          <Image key={item.id} source={{ uri: item.url }} style={styles.image} contentFit="cover" />
+          <Image
+            key={item.id}
+            source={{ uri: item.url }}
+            contentFit="cover"
+            style={{ width: "100%", aspectRatio: 4 / 5, borderRadius: radius.xl, backgroundColor: colors.sunken }}
+          />
         ) : (
-          <View key={item.id} style={styles.video}>
-            <Text style={styles.videoText}>영상 {item.durationSeconds ?? ""}초</Text>
+          <View
+            key={item.id}
+            style={{
+              height: 96,
+              borderRadius: radius.xl,
+              backgroundColor: colors.surface,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: spacing.sm,
+            }}
+          >
+            <MaterialCommunityIcons name="play-circle" size={28} color={colors.inkMuted} />
+            <ThemedText variant="headline">영상 {item.durationSeconds ?? ""}초</ThemedText>
           </View>
         ),
       )}
-      {!record.frozen && !record.canReact ? (
-        <Pressable onPress={() => router.push({ pathname: "/workout/complete", params: { recordId: record.id } })}>
-          <Text style={styles.edit}>오늘 기록 수정</Text>
-        </Pressable>
+      {!record.frozen && mine ? (
+        <Button
+          label="오늘 기록 수정"
+          variant="secondary"
+          onPress={() => router.push({ pathname: "/workout/complete", params: { recordId: record.id } })}
+        />
       ) : null}
-      {record.canReact ? (
-        <View style={styles.reactions}>
-          {REACTIONS.map((item) => {
-            const summary = record.reactions.find((reaction) => reaction.type === item.type);
-            return (
-              <Pressable key={item.type} onPress={() => react(item.type)} style={[styles.reaction, summary?.mine ? styles.mine : null]}>
-                <Text style={styles.reactionText}>
-                  {item.label}
-                  {summary?.count ? ` ${summary.count}` : ""}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+      {error ? (
+        <ThemedText variant="footnote" tone="danger">
+          {error}
+        </ThemedText>
       ) : null}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  page: {
-    padding: 20,
-    gap: 12,
-    backgroundColor: colors.bg,
-  },
-  empty: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  name: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  date: {
-    color: colors.muted,
-  },
-  types: {
-    fontSize: 18,
-    color: colors.text,
-  },
-  image: {
-    width: "100%",
-    height: 220,
-    borderRadius: 16,
-    backgroundColor: colors.line,
-  },
-  video: {
-    height: 88,
-    borderRadius: 16,
-    backgroundColor: colors.card,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  videoText: {
-    color: colors.text,
-    fontWeight: "600",
-  },
-  edit: {
-    color: colors.accent,
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  reactions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  reaction: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.card,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  mine: {
-    borderColor: colors.accent,
-  },
-  reactionText: {
-    color: colors.text,
-  },
-  muted: {
-    color: colors.muted,
-  },
-});

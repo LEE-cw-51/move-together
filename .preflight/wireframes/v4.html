@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Move Together MVP — wireframe</title>
+<link rel="stylesheet" href="lofi.css">
+<script src="lofi.js"></script>
+</head>
+<body data-platform="mobile">
+
+<!-- ① 오늘 — 나는 운동 전, 상대도 운동 전 (앱을 열면 처음 보는 화면) -->
+<div data-page data-screen-id="today" data-start-screen>
+  <header data-region="top-bar" data-layout="row" data-keep="row" data-justify="between" data-sticky="top" data-size="xs">
+    <strong>오늘 · 9월 29일</strong>
+    <div data-layout="row" data-keep="row"><button>알림</button><button>설정</button></div>
+  </header>
+  <main data-region="content" data-layout="col" data-grow>
+    <section data-region="streak-banner" data-layout="col" data-size="xs">
+      <h2>🔥 7일째 같이 운동 중</h2>
+      <p>오늘: 둘 다 아직</p>
+    </section>
+    <section data-region="my-card" data-layout="col" data-size="md">
+      <h3>나</h3>
+      <p>⏳ 아직 운동 전</p>
+      <button data-primary data-action-target="log-exercise">+ 운동 완료</button>
+    </section>
+    <section data-region="partner-card" data-layout="col" data-size="md">
+      <h3>지우</h3>
+      <p>⏳ 아직 운동 전</p>
+      <button data-action-target="nudge-sent">💪 운동하라고 찌르기</button>
+    </section>
+  </main>
+  <nav data-region="bottom-tabs" data-layout="row" data-keep="row" data-sticky="bottom" data-size="xs">
+    <span><strong>오늘</strong></span><span data-action-target="history">기록</span>
+  </nav>
+  <p class="wf-note">화면 최우선 정보 3개: 나 했나 / 상대 했나 / 둘 다 했나. 카드 하나 = 사람 한 명.</p>
+</div>
+
+<!-- ② 찌르기 완료 피드백 (바텀시트) -->
+<div data-page data-screen-id="nudge-sent">
+  <main data-region="nudge-sheet" data-layout="col" data-grow>
+    <h2>찌르기 완료!</h2>
+    <p>지우님에게 운동하라고 알려줬어요.</p>
+    <p class="wf-note">상대에게 푸시: "💪 OO님이 운동하라고 찔렀어요." 하루 1회. 이후 상대 카드 버튼은 "오늘 찔렀어요"(비활성).</p>
+    <button data-primary data-action-target="today-nudged">확인</button>
+  </main>
+</div>
+
+<!-- ①-1 오늘 — 찌른 뒤: 상대는 아직, 상대 카드 버튼만 비활성 -->
+<div data-page data-screen-id="today-nudged">
+  <header data-region="top-bar" data-layout="row" data-keep="row" data-justify="between" data-sticky="top" data-size="xs">
+    <strong>오늘 · 9월 29일</strong>
+    <div data-layout="row" data-keep="row"><button>알림</button><button>설정</button></div>
+  </header>
+  <main data-region="content" data-layout="col" data-grow>
+    <section data-region="streak-banner" data-layout="col" data-size="xs">
+      <h2>🔥 7일째 같이 운동 중</h2>
+      <p>오늘: 둘 다 아직</p>
+    </section>
+    <section data-region="my-card" data-layout="col" data-size="md">
+      <h3>나</h3>
+      <p>⏳ 아직 운동 전</p>
+      <button data-primary data-action-target="log-exercise">+ 운동 완료</button>
+    </section>
+    <section data-region="partner-card" data-layout="col" data-size="md">
+      <h3>지우</h3>
+      <p>⏳ 아직 운동 전</p>
+      <button disabled>오늘 찔렀어요</button>
+    </section>
+  </main>
+  <nav data-region="bottom-tabs" data-layout="row" data-keep="row" data-sticky="bottom" data-size="xs">
+    <span><strong>오늘</strong></span><span data-action-target="history">기록</span>
+  </nav>
+  <p class="wf-note">② 찌르기 완료 시트의 [확인] → 여기로 옵니다. ① today와 레이아웃은 같고, 상대 카드 버튼만 비활성 문구로 바뀝니다. 하루 지나면 다시 ① 상태로 초기화.</p>
+</div>
+
+<!-- ③ 오늘 — 나는 운동 전, 상대는 운동 완료 → 리액션 -->
+<div data-page data-screen-id="today-partner-done">
+  <header data-region="top-bar" data-layout="row" data-keep="row" data-justify="between" data-sticky="top" data-size="xs">
+    <strong>오늘 · 9월 29일</strong>
+    <div data-layout="row" data-keep="row"><button>알림</button><button>설정</button></div>
+  </header>
+  <main data-region="content" data-layout="col" data-grow>
+    <section data-region="streak-banner" data-layout="col" data-size="xs">
+      <h2>🔥 7일째 같이 운동 중</h2>
+      <p>오늘: 지우는 했어요. 나만 하면 8일!</p>
+    </section>
+    <section data-region="my-card" data-layout="col" data-size="md">
+      <h3>나</h3>
+      <p>⏳ 아직 운동 전</p>
+      <button data-primary data-action-target="log-exercise">+ 운동 완료</button>
+    </section>
+    <section data-region="partner-card" data-layout="col" data-size="md">
+      <h3>지우</h3>
+      <p>✅ 오늘 운동 완료 · 🧘 요가</p>
+      <div data-region="reactions" data-layout="row" data-keep="row">
+        <button>❤️</button><button>💪</button><button>🔥</button><button>👏</button>
+      </div>
+      <div data-region="partner-media" data-layout="grid" data-cols="3" data-cols-sm="3" data-label="off">
+        <div data-ph="image" data-action-target="story-viewer"></div>
+      </div>
+    </section>
+  </main>
+  <nav data-region="bottom-tabs" data-layout="row" data-keep="row" data-sticky="bottom" data-size="xs">
+    <span><strong>오늘</strong></span><span data-action-target="history">기록</span>
+  </nav>
+  <p class="wf-note">사진 탭 → 크게 보기(기존 기록 상세). 댓글 없음, 리액션 한 번 탭이 전부.</p>
+</div>
+
+<!-- ③-1 오늘 — 나는 완료, 상대는 아직 → 찌르기 -->
+<div data-page data-screen-id="today-me-done">
+  <header data-region="top-bar" data-layout="row" data-keep="row" data-justify="between" data-sticky="top" data-size="xs">
+    <strong>오늘 · 9월 29일</strong>
+    <div data-layout="row" data-keep="row"><button>알림</button><button>설정</button></div>
+  </header>
+  <main data-region="content" data-layout="col" data-grow>
+    <section data-region="streak-banner" data-layout="col" data-size="xs">
+      <h2>🔥 7일째 같이 운동 중</h2>
+      <p>오늘: 나는 했어요. 지우가 하면 8일!</p>
+    </section>
+    <section data-region="my-card" data-layout="col" data-size="md">
+      <h3>나</h3>
+      <p>✅ 오늘 운동 완료 · 🏃 러닝 · 🚶 걷기</p>
+      <div data-region="my-media" data-layout="grid" data-cols="3" data-cols-sm="3" data-label="off">
+        <div data-ph="image" data-action-target="story-viewer"></div><div data-ph="image" data-action-target="story-viewer"></div>
+      </div>
+    </section>
+    <section data-region="partner-card" data-layout="col" data-size="md">
+      <h3>지우</h3>
+      <p>⏳ 아직 운동 전</p>
+      <button data-action-target="nudge-sent">💪 운동하라고 찌르기</button>
+    </section>
+  </main>
+  <nav data-region="bottom-tabs" data-layout="row" data-keep="row" data-sticky="bottom" data-size="xs">
+    <span><strong>오늘</strong></span><span data-action-target="history">기록</span>
+  </nav>
+  <p class="wf-note">⑥ 운동 완료 결과의 [확인] → 상대가 아직이면 여기로 옵니다. 내 카드는 완료 상태 유지, 상대 카드만 대기 중.</p>
+</div>
+
+<!-- ④ 운동 완료 Step 1 — 운동 종류 -->
+<div data-page data-screen-id="log-exercise">
+  <header data-region="flow-bar" data-layout="row" data-keep="row" data-justify="between" data-size="xs">
+    <button data-action-target="today">✕</button>
+    <span>1 / 2</span>
+  </header>
+  <main data-region="exercise-picker" data-layout="col" data-grow>
+    <h2>오늘 뭐 했어?</h2>
+    <p>여러 개 골라도 돼요</p>
+    <div data-layout="grid" data-cols="2" data-cols-sm="2">
+      <button>🏃 러닝</button><button>🏋️ 헬스</button>
+      <button>🚶 걷기</button><button>🚴 자전거</button>
+      <button>🏊 수영</button><button>🏠 홈트</button>
+      <button>🧘 요가</button><button>✨ 기타</button>
+    </div>
+  </main>
+  <footer data-region="flow-actions" data-layout="col" data-sticky="bottom" data-size="xs">
+    <button data-primary data-action-target="log-media">다음</button>
+  </footer>
+</div>
+
+<!-- ⑤ 운동 완료 Step 2 — 오늘의 순간 (선택) -->
+<div data-page data-screen-id="log-media">
+  <header data-region="flow-bar" data-layout="row" data-keep="row" data-justify="between" data-size="xs">
+    <button data-action-target="log-exercise">←</button>
+    <span>2 / 2</span>
+  </header>
+  <main data-region="media-picker" data-layout="col" data-grow>
+    <h2>오늘 운동한 순간을 남겨보세요</h2>
+    <p>사진 또는 10초 이내 영상 · 최대 3개 · 선택사항</p>
+    <div data-layout="grid" data-cols="3" data-cols-sm="3">
+      <div data-ph="image"></div>
+      <button>+ 사진/영상</button>
+      <button>+ 카메라</button>
+    </div>
+  </main>
+  <footer data-region="flow-actions" data-layout="col" data-sticky="bottom" data-size="xs">
+    <button data-primary data-action-target="log-done">완료</button>
+    <button data-action-target="log-done">사진 없이 완료</button>
+  </footer>
+</div>
+
+<!-- ⑥ 운동 완료 결과 — 작은 보상 -->
+<div data-page data-screen-id="log-done">
+  <main data-region="done-celebration" data-layout="col" data-grow>
+    <h1>🎉</h1>
+    <h2>운동 완료!</h2>
+    <p>🏃 러닝 · 🚶 걷기</p>
+    <p>오늘도 해냈어요. 지우에게 알려줬어요.</p>
+    <p class="wf-note">상대에게 푸시: "OO님이 오늘 운동했어요 🏃". 애니메이션은 이 순간에만.</p>
+  </main>
+  <footer data-region="done-actions" data-layout="col" data-sticky="bottom" data-size="xs">
+    <button data-primary data-action-target="today-me-done">확인</button>
+  </footer>
+  <p class="wf-note">상대가 아직이면 확인 → ③-1 today-me-done(나만 완료). 상대가 이미 했으면 확인 → ⑦ 둘 다 성공. (Screens 바에서 both-success로 직접 이동해 그 분기도 볼 수 있음)</p>
+</div>
+
+<!-- ⑦ 둘 다 성공 — 핵심 보상 (하루 1회 전체화면) -->
+<div data-page data-screen-id="both-success">
+  <main data-region="both-celebration" data-layout="col" data-grow>
+    <h2>🔥 8일 연속</h2>
+    <h1>오늘은 둘 다 성공!</h1>
+    <div data-region="pair-summary" data-layout="col">
+      <section data-region="pair-me" data-layout="col" data-size="xs"><h3>나</h3><p>🏃 러닝 · 🚶 걷기</p></section>
+      <p>❤️</p>
+      <section data-region="pair-partner" data-layout="col" data-size="xs"><h3>지우</h3><p>🧘 요가</p></section>
+    </div>
+    <p>함께한 날이 8일째예요.</p>
+    <p class="wf-note">칼로리·거리·시간 숫자는 보여주지 않음. "우리 둘이 해냈다"만.</p>
+  </main>
+  <footer data-region="both-actions" data-layout="col" data-sticky="bottom" data-size="xs">
+    <button data-primary data-action-target="today-both">좋아요 ❤️</button>
+  </footer>
+</div>
+
+<!-- ⑧ 오늘 — 둘 다 완료 (보상 화면을 닫은 뒤) -->
+<div data-page data-screen-id="today-both">
+  <header data-region="top-bar" data-layout="row" data-keep="row" data-justify="between" data-sticky="top" data-size="xs">
+    <strong>오늘 · 9월 29일</strong>
+    <div data-layout="row" data-keep="row"><button>알림</button><button>설정</button></div>
+  </header>
+  <main data-region="content" data-layout="col" data-grow>
+    <section data-region="streak-banner" data-layout="col" data-size="xs">
+      <h2>🔥 8일째 같이 운동 중</h2>
+      <p>✅ 오늘은 둘 다 성공!</p>
+    </section>
+    <section data-region="my-card" data-layout="col" data-size="md">
+      <h3>나</h3>
+      <p>✅ 오늘 운동 완료 · 🏃 러닝 · 🚶 걷기</p>
+      <div data-region="my-media" data-layout="grid" data-cols="3" data-cols-sm="3" data-label="off">
+        <div data-ph="image" data-action-target="story-viewer"></div><div data-ph="image" data-action-target="story-viewer"></div>
+      </div>
+      <p>받은 반응: ❤️ 💪</p>
+    </section>
+    <section data-region="partner-card" data-layout="col" data-size="md">
+      <h3>지우</h3>
+      <p>✅ 오늘 운동 완료 · 🧘 요가</p>
+      <div data-region="reactions" data-layout="row" data-keep="row">
+        <button>❤️</button><button>💪</button><button>🔥</button><button>👏</button>
+      </div>
+      <div data-region="partner-media" data-layout="grid" data-cols="3" data-cols-sm="3" data-label="off">
+        <div data-ph="image" data-action-target="story-viewer"></div>
+      </div>
+    </section>
+  </main>
+  <nav data-region="bottom-tabs" data-layout="row" data-keep="row" data-sticky="bottom" data-size="xs">
+    <span><strong>오늘</strong></span><span data-action-target="history">기록</span>
+  </nav>
+</div>
+
+<!-- ⑧-1 오늘의 순간 — 스토리 뷰어 (오늘 올린 사진/영상만, 전체화면) -->
+<div data-page data-screen-id="story-viewer">
+  <header data-region="story-top" data-layout="col" data-sticky="top" data-size="xs">
+    <div data-region="story-progress" data-layout="row" data-keep="row" data-label="off">
+      <div data-ph="text"></div><div data-ph="text"></div><div data-ph="text"></div>
+    </div>
+    <div data-region="story-header" data-layout="row" data-keep="row" data-justify="between" data-label="off">
+      <span><strong>지우</strong> · 🧘 요가 · 오후 7:12</span>
+      <button data-action-target="today-both">✕</button>
+    </div>
+  </header>
+  <main data-region="story-media" data-grow>
+    <div data-ph="image"></div>
+    <p class="wf-note">화면 오른쪽 탭 → 다음, 왼쪽 탭 → 이전, 길게 누르면 멈춤. 영상(10초 이하)은 자동 재생, 사진은 5초 뒤 다음으로. 마지막 뒤엔 자동으로 닫힘. 아래로 스와이프해도 닫힘.</p>
+  </main>
+  <footer data-region="story-reactions" data-layout="row" data-keep="row" data-sticky="bottom" data-size="xs">
+    <button>❤️</button><button>💪</button><button>🔥</button><button>👏</button>
+  </footer>
+  <p class="wf-note">상대 스토리: 아래 반응 4개를 누르면 바로 보내짐(누른 것 표시). 내 스토리를 볼 땐 반응 버튼 대신 "받은 반응 ❤️ 1 💪 1"만 표시. 지난 날 사진은 스토리가 아니라 기록 탭 앨범(⑨-1)에서 봄.</p>
+</div>
+
+<!-- ⑨ 기록 — 월간 캘린더로 둘의 운동을 한눈에 -->
+<div data-page data-screen-id="history">
+  <header data-region="top-bar" data-layout="row" data-keep="row" data-justify="between" data-sticky="top" data-size="xs">
+    <strong>기록</strong>
+    <span>🔥 함께한 날 8일</span>
+  </header>
+  <main data-region="history-body" data-layout="col" data-grow>
+    <section data-region="month-nav" data-layout="row" data-keep="row" data-justify="between" data-size="xs">
+      <button>‹</button>
+      <strong>2026년 9월</strong>
+      <button>›</button>
+    </section>
+    <section data-region="calendar-grid" data-layout="col" data-label="off">
+      <div data-layout="row" data-keep="row"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+      <div data-layout="row" data-keep="row"><div data-ph="text"></div><div>1</div><div>2</div><div>3 ·</div><div>4</div><div>5 🔥</div><div>6 🔥</div></div>
+      <div data-layout="row" data-keep="row"><div>7</div><div>8 🔥</div><div>9</div><div>10 🔥</div><div>11 ·</div><div>12</div><div>13 🔥</div></div>
+      <div data-layout="row" data-keep="row"><div>14</div><div>15 🔥</div><div>16 🔥</div><div>17</div><div>18 ·</div><div>19</div><div>20 🔥</div></div>
+      <div data-layout="row" data-keep="row"><div>21</div><div>22 🔥</div><div>23</div><div>24 🔥</div><div>25</div><div>26 🔥</div><div>27 ·</div></div>
+      <div data-layout="row" data-keep="row"><div data-action-target="history-day">28 🔥</div><div data-action-target="history-day">29 🔥</div><div>30</div><div></div><div></div><div></div><div></div></div>
+    </section>
+    <section data-region="calendar-legend" data-layout="row" data-keep="row" data-size="xs">
+      <span>🔥 둘 다 운동</span><span>· 나만/상대만</span>
+    </section>
+  </main>
+  <nav data-region="bottom-tabs" data-layout="row" data-keep="row" data-sticky="bottom" data-size="xs">
+    <span data-action-target="today">오늘</span><span><strong>기록</strong></span>
+  </nav>
+  <p class="wf-note">날짜 칸 탭 → 그날 상세(⑨-1). 🔥 둘 다 성공한 날, · 한 명만 한 날, 표시 없으면 아무도 안 한 날.</p>
+</div>
+
+<!-- ⑨-1 기록 — 선택한 날 상세 -->
+<div data-page data-screen-id="history-day">
+  <header data-region="top-bar" data-layout="row" data-keep="row" data-justify="between" data-sticky="top" data-size="xs">
+    <button data-action-target="history">←</button>
+    <strong>9월 29일</strong>
+  </header>
+  <main data-region="day-detail" data-layout="col" data-grow>
+    <section data-region="day-me" data-layout="col" data-size="sm">
+      <h3>나</h3>
+      <p>✅ 🏃 러닝 · 🚶 걷기</p>
+      <div data-layout="grid" data-cols="3" data-cols-sm="3" data-label="off">
+        <div data-ph="image"></div><div data-ph="image"></div>
+      </div>
+    </section>
+    <section data-region="day-partner" data-layout="col" data-size="sm">
+      <h3>지우</h3>
+      <p>✅ 🧘 요가</p>
+      <div data-layout="grid" data-cols="3" data-cols-sm="3" data-label="off">
+        <div data-ph="image"></div>
+      </div>
+      <div data-region="day-reactions" data-layout="row" data-keep="row">
+        <button>❤️</button><button>💪</button><button>🔥</button><button>👏</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ⑩ 연결하기 — 상대가 아직 없을 때 오늘 탭 대신 -->
+<div data-page data-screen-id="connect">
+  <header data-region="top-bar" data-layout="row" data-keep="row" data-justify="between" data-sticky="top" data-size="xs">
+    <strong>Move Together</strong>
+    <button>설정</button>
+  </header>
+  <main data-region="connect-body" data-layout="col" data-grow>
+    <section data-region="connect-intro" data-layout="col" data-size="sm">
+      <h2>함께 운동할 사람을 연결하세요</h2>
+      <p>연결하면 오늘 운동했는지만 서로 보여요.</p>
+    </section>
+    <section data-region="invite" data-layout="col">
+      <button data-primary>초대 링크 보내기</button>
+      <p>초대 코드: 4F7K-92</p>
+    </section>
+    <section data-region="code-entry" data-layout="col">
+      <h3>코드를 받았어요</h3>
+      <div data-ph="input"></div>
+      <button data-action-target="today">연결하기</button>
+    </section>
+  </main>
+</div>
+
+<footer class="wf-assume">
+  <p><strong>가정</strong>: 하단 탭 2개(오늘/기록) · 알림/설정은 상단 버튼 · 미디어는 선택 · 찌르기 하루 1회, 메시지 작성 없음 · 둘 다 성공 전체화면은 하루 1회 · 기록 탭은 새 목록 API 필요.</p>
+  <p><strong>질문</strong>: 상대 이름 표기(닉네임 vs 관계명) · 둘 다 성공 전체화면 여부 · 기록에서 "나만" 날 표시 방식.</p>
+</footer>
+
+</body>
+</html>

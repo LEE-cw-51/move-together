@@ -446,3 +446,154 @@ test("reactions toggle only on the other person's record", async () => {
     await ctx.close();
   }
 });
+
+test("history lists a month's days, marks mutual days, and is members-only", async () => {
+  const ctx = await setup();
+  try {
+    const a = await register(ctx.app, "a@example.com", "민지");
+    const b = await register(ctx.app, "b@example.com", "준호");
+    const stranger = await register(ctx.app, "stranger@example.com", "하늘");
+    const created = await request(ctx.app, "POST", "/challenges", undefined, a.token);
+    const challengeId = String(created.json.id);
+    const code = String((created.json.invite as { code: string }).code);
+    await request(ctx.app, "POST", "/invites/accept", { code }, b.token);
+    const insert = (userId: string, date: string, types: string) =>
+      ctx.db.query(
+        `INSERT INTO workout_records (challenge_id, user_id, seoul_date, exercise_types, completed_at)
+         VALUES ($1, $2, $3, $4, now())`,
+        [challengeId, userId, date, types],
+      );
+    await insert(a.user.id, "2026-08-31", "{run}");
+    await insert(a.user.id, "2026-09-05", "{run,walk}");
+    await insert(b.user.id, "2026-09-05", "{yoga}");
+    await insert(b.user.id, "2026-09-11", "{swim}");
+
+    const september = await request(ctx.app, "GET", `/challenges/${challengeId}/history?month=2026-09`, undefined, a.token);
+    assert.equal(september.status, 200);
+    const days = september.json.days as {
+      date: string;
+      mutual: boolean;
+      members: { isMe: boolean; displayName: string; exerciseTypes: string[] }[];
+    }[];
+    assert.deepEqual(
+      days.map((day) => [day.date, day.mutual, day.members.length]),
+      [
+        ["2026-09-05", true, 2],
+        ["2026-09-11", false, 1],
+      ],
+    );
+    const partnerOnly = days[1].members[0];
+    assert.equal(partnerOnly.isMe, false);
+    assert.equal(partnerOnly.displayName, "준호");
+    assert.deepEqual(partnerOnly.exerciseTypes, ["swim"]);
+
+    const invalid = await request(ctx.app, "GET", `/challenges/${challengeId}/history?month=2026-13`, undefined, a.token);
+    assert.equal(invalid.status, 400);
+    assert.equal(errorCode(invalid.json), "invalid_month");
+
+    const forbidden = await request(ctx.app, "GET", `/challenges/${challengeId}/history?month=2026-09`, undefined, stranger.token);
+    assert.equal(forbidden.status, 403);
+  } finally {
+    await ctx.close();
+  }
+});
+
+test("dev tools connect a stand-in partner, toggle their day, seed history, and stay off in production", async () => {
+  const ctx = await setup();
+  try {
+    const a = await register(ctx.app, "a@example.com", "민지");
+    const connected = await request(ctx.app, "POST", "/dev/partner", undefined, a.token);
+    assert.equal(connected.status, 200);
+    const home = await request(ctx.app, "GET", "/home", undefined, a.token);
+    const members = (home.json.challenge as { members: { isMe: boolean; displayName: string }[] }).members;
+    assert.equal(members.length, 2);
+    assert.equal(members.find((member) => !member.isMe)?.displayName, "데모 상대");
+
+    const again = await request(ctx.app, "POST", "/dev/partner", undefined, a.token);
+    assert.equal(again.json.challengeId, connected.json.challengeId);
+
+    const done = await request(ctx.app, "POST", "/dev/partner/today", undefined, a.token);
+    assert.equal(done.json.partnerCompleted, true);
+    const undone = await request(ctx.app, "POST", "/dev/partner/today", undefined, a.token);
+    assert.equal(undone.json.partnerCompleted, false);
+
+    const seeded = await request(ctx.app, "POST", "/dev/history", undefined, a.token);
+    assert.ok(Number(seeded.json.inserted) > 0);
+
+    await request(ctx.app, "POST", "/dev/partner/today", undefined, a.token);
+    const reset = await request(ctx.app, "POST", "/dev/reset-today", undefined, a.token);
+    assert.equal(reset.status, 200);
+    const after = await request(ctx.app, "GET", "/home", undefined, a.token);
+    const afterMembers = (after.json.challenge as { members: { today: { completed: boolean } }[] }).members;
+    assert.ok(afterMembers.every((member) => !member.today.completed));
+
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const prodApp = createApp(ctx.db);
+      const blocked = await request(prodApp, "POST", "/dev/partner", undefined, a.token);
+      assert.equal(blocked.status, 404);
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
+  } finally {
+    await ctx.close();
+  }
+});
+
+test("custom exercises are personal, capped, usable alone, and survive deletion on past records", async () => {
+  const ctx = await setup();
+  try {
+    const a = await register(ctx.app, "a@example.com", "민지");
+    const b = await register(ctx.app, "b@example.com", "준호");
+    const created = await request(ctx.app, "POST", "/challenges", undefined, a.token);
+    const challengeId = String(created.json.id);
+    const code = String((created.json.invite as { code: string }).code);
+    await request(ctx.app, "POST", "/invites/accept", { code }, b.token);
+
+    const pilates = await request(ctx.app, "POST", "/me/exercises", { label: " 필라테스 " }, a.token);
+    assert.equal(pilates.status, 201);
+    assert.equal(pilates.json.label, "필라테스");
+    const duplicate = await request(ctx.app, "POST", "/me/exercises", { label: "필라테스" }, a.token);
+    assert.equal(errorCode(duplicate.json), "duplicate_exercise");
+    const tooLong = await request(ctx.app, "POST", "/me/exercises", { label: "가".repeat(11) }, a.token);
+    assert.equal(tooLong.status, 400);
+
+    const partnerList = await request(ctx.app, "GET", "/me/exercises", undefined, b.token);
+    assert.deepEqual(partnerList.json.exercises, []);
+    const notTheirs = await request(
+      ctx.app,
+      "POST",
+      `/challenges/${challengeId}/workouts`,
+      { exerciseTypes: [], customLabels: ["필라테스"] },
+      b.token,
+    );
+    assert.equal(errorCode(notTheirs.json), "invalid_custom_exercise");
+
+    const saved = await request(
+      ctx.app,
+      "POST",
+      `/challenges/${challengeId}/workouts`,
+      { exerciseTypes: [], customLabels: ["필라테스"] },
+      a.token,
+    );
+    assert.equal(saved.status, 201);
+    const home = await request(ctx.app, "GET", "/home", undefined, b.token);
+    const partner = (home.json.challenge as { members: { isMe: boolean; today: { customLabels: string[] } }[] }).members.find(
+      (member) => !member.isMe,
+    );
+    assert.deepEqual(partner?.today.customLabels, ["필라테스"]);
+
+    await request(ctx.app, "DELETE", `/me/exercises/${String(pilates.json.id)}`, undefined, a.token);
+    const detail = await request(ctx.app, "GET", `/workouts/${String(saved.json.id)}`, undefined, b.token);
+    assert.deepEqual(detail.json.customLabels, ["필라테스"]);
+
+    for (let index = 0; index < 20; index += 1) {
+      await request(ctx.app, "POST", "/me/exercises", { label: `운동${index}` }, a.token);
+    }
+    const overLimit = await request(ctx.app, "POST", "/me/exercises", { label: "하나 더" }, a.token);
+    assert.equal(errorCode(overLimit.json), "exercise_limit");
+  } finally {
+    await ctx.close();
+  }
+});

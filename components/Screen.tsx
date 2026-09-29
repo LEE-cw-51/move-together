@@ -1,24 +1,13 @@
-import { ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "./theme";
+import type { ReactNode } from "react";
+import { View } from "react-native";
+import { SafeAreaView, type Edge } from "react-native-safe-area-context";
+import { spacing, useColors } from "@/theme";
 
-export function Screen({ children }: { children: ReactNode }) {
+export function Screen({ children, edges = ["top", "bottom"] }: { children: ReactNode; edges?: Edge[] }) {
+  const colors = useColors();
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.body}>{children}</View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={edges}>
+      <View style={{ flex: 1, paddingHorizontal: spacing.gutter, paddingBottom: spacing.md }}>{children}</View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  body: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-});

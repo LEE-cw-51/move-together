@@ -1,33 +1,42 @@
-import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { ScrollView, View } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "@/components/Button";
-import { Screen } from "@/components/Screen";
-import { colors } from "@/components/theme";
+import { TextField } from "@/components/TextField";
+import { ThemedText } from "@/components/ThemedText";
 import { ApiError, api } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { radius, spacing, useColors } from "@/theme";
 import type { InvitePreview } from "@/types";
 
 export default function ConnectScreen() {
+  const params = useLocalSearchParams<{ code?: string }>();
   const { token } = useSession();
-  const [code, setCode] = useState("");
+  const colors = useColors();
+  const [code, setCode] = useState(params.code ?? "");
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function lookup() {
-    setBusy(true);
-    setError("");
-    try {
-      const next = await api<InvitePreview>(`/invites/${encodeURIComponent(code.trim())}`, { token });
-      setPreview(next);
-    } catch (err) {
-      setPreview(null);
-      setError(err instanceof ApiError ? err.message : "초대를 찾지 못했어요");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const lookup = useCallback(
+    async (value: string) => {
+      setBusy(true);
+      setError("");
+      try {
+        setPreview(await api<InvitePreview>(`/invites/${encodeURIComponent(value.trim())}`, { token }));
+      } catch (err) {
+        setPreview(null);
+        setError(err instanceof ApiError ? err.message : "초대를 찾지 못했어요");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [token],
+  );
+
+  useEffect(() => {
+    if (params.code && token) lookup(params.code).catch(() => undefined);
+  }, [lookup, params.code, token]);
 
   async function accept() {
     if (!preview) return;
@@ -47,71 +56,49 @@ export default function ConnectScreen() {
   }
 
   return (
-    <Screen>
-      <View style={styles.wrap}>
-        <Text style={styles.title}>받은 코드를 입력해요</Text>
-        <TextInput
-          autoCapitalize="characters"
-          placeholder="초대 코드"
-          placeholderTextColor={colors.muted}
-          style={styles.input}
-          value={code}
-          onChangeText={setCode}
-        />
-        <Button label={busy ? "확인 중" : "코드 확인"} disabled={busy || code.trim().length < 4} onPress={lookup} />
-        {preview ? (
-          <View style={styles.card}>
-            <Text style={styles.name}>{preview.inviterDisplayName}</Text>
-            <Text style={styles.meta}>{preview.challengeName}</Text>
-            <Text style={styles.meta}>{preview.status === "pending" ? "수락할 수 있어요" : "사용할 수 없는 초대예요"}</Text>
-            {preview.status === "pending" ? <Button label="함께하기" disabled={busy} onPress={accept} /> : null}
-          </View>
-        ) : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </View>
-    </Screen>
+    <ScrollView
+      style={{ backgroundColor: colors.bg }}
+      contentContainerStyle={{ padding: spacing.gutter, gap: spacing.md }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <ThemedText variant="title">받은 코드를 입력해요</ThemedText>
+      <TextField
+        autoCapitalize="characters"
+        placeholder="초대 코드"
+        value={code}
+        onChangeText={setCode}
+        style={{ letterSpacing: 2 }}
+      />
+      <Button
+        label={busy && !preview ? "확인 중" : "코드 확인"}
+        variant={preview ? "secondary" : "primary"}
+        disabled={busy || code.trim().length < 4}
+        onPress={() => lookup(code)}
+      />
+      {preview ? (
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: radius.lg,
+            borderCurve: "continuous",
+            padding: spacing.lg,
+            gap: spacing.sm,
+          }}
+        >
+          <ThemedText variant="headline" tone="partner">
+            {preview.inviterDisplayName}
+          </ThemedText>
+          <ThemedText variant="subhead" tone="muted">
+            {preview.status === "pending" ? `${preview.challengeName}에 함께할 수 있어요` : "사용할 수 없는 초대예요"}
+          </ThemedText>
+          {preview.status === "pending" ? <Button label="함께하기" loading={busy} onPress={accept} /> : null}
+        </View>
+      ) : null}
+      {error ? (
+        <ThemedText variant="footnote" tone="danger">
+          {error}
+        </ThemedText>
+      ) : null}
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    justifyContent: "center",
-    gap: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  input: {
-    backgroundColor: colors.card,
-    borderColor: colors.line,
-    borderWidth: 1,
-    borderRadius: 16,
-    minHeight: 52,
-    paddingHorizontal: 16,
-    fontSize: 20,
-    letterSpacing: 2,
-    color: colors.text,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    padding: 16,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  meta: {
-    color: colors.muted,
-  },
-  error: {
-    color: colors.accent,
-  },
-});

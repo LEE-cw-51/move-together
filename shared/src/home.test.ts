@@ -60,7 +60,7 @@ test("both done hides the nudge and shows the mutual banner", () => {
 test("an existing nudge disables the button with fixed copy", () => {
   assert.deepEqual(
     nudgePresentation({ hasOtherMember: true, otherCompleted: false, alreadyNudged: true }),
-    { visible: true, enabled: false, label: "오늘 찌르었어요" },
+    { visible: true, enabled: false, label: "오늘 찔렀어요" },
   );
 });
 

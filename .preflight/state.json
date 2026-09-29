@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "title": "Move Together MVP",
+  "platform": "mobile",
+  "created_at": "2026-09-28T17:52:12+00:00",
+  "stage": "locked",
+  "versions": [
+    {
+      "v": 1,
+      "file": "wireframes/v1.html",
+      "from": null,
+      "note": "first draft",
+      "created_at": "2026-09-28T17:52:31+00:00",
+      "lint": "pass",
+      "sha256": "d249333688c33b4df3bd1838083b4f2d190bbfef5cab99fd8d67e26a89177c0f"
+    },
+    {
+      "v": 2,
+      "file": "wireframes/v2.html",
+      "from": 1,
+      "note": "기록 화면에 월간 캘린더 추가",
+      "created_at": "2026-09-29T01:25:27+00:00",
+      "lint": "pass",
+      "sha256": "33a93028c8b47cc6012d9e4da0de5900f11d5c901875dca73ff9939e90a7a3d4"
+    },
+    {
+      "v": 3,
+      "file": "wireframes/v3.html",
+      "from": 2,
+      "note": "빠진 상태 2개 추가: 나만 완료 / 찌른 뒤 대기중",
+      "created_at": "2026-09-29T01:48:19+00:00",
+      "lint": "pass",
+      "sha256": "34acc8d2abc588d34879e14d28ee146030944f34b7f9dae679286370c7036f1f"
+    },
+    {
+      "v": 4,
+      "file": "wireframes/v4.html",
+      "from": 3,
+      "note": "스토리 뷰어 추가",
+      "created_at": "2026-09-29T02:19:41+00:00",
+      "lint": "pass",
+      "sha256": "b9635e8deadb192777234ca2d3c4aa400af501161aea9cb9ef42423db841e5d0"
+    },
+    {
+      "v": 5,
+      "file": "wireframes/v5.html",
+      "from": 4,
+      "note": "나만 쓰는 운동 목록 추가",
+      "created_at": "2026-09-29T02:23:51+00:00",
+      "lint": "pass",
+      "sha256": "cf583359604dfa6b5f6e00088f881287c3aeb765b642e3d210bf9585da7de42a"
+    }
+  ],
+  "lock": {
+    "version": 5,
+    "source": "wireframes/v5.html",
+    "sha256_source": "cf583359604dfa6b5f6e00088f881287c3aeb765b642e3d210bf9585da7de42a",
+    "sha256_lock": "8ff0fc253e5e8b16e47884a133fe9519145968119b35d75e1f6c16eae4801883",
+    "approved_at": "2026-09-29T02:25:21+00:00",
+    "quote": "v5로 진행하자.",
+    "evidence": "verified"
+  },
+  "gate": {
+    "skipped": false,
+    "extra_paths": [],
+    "ignore_paths": []
+  },
+  "history": [
+    {
+      "ts": "2026-09-28T17:52:12+00:00",
+      "event": "init"
+    },
+    {
+      "ts": "2026-09-28T17:52:31+00:00",
+      "event": "new",
+      "v": 1,
+      "from": null,
+      "note": "first draft"
+    },
+    {
+      "ts": "2026-09-28T17:55:10+00:00",
+      "event": "check",
+      "v": 1,
+      "violations": [],
+      "hints": 0
+    },
+    {
+      "ts": "2026-09-28T17:55:33+00:00",
+      "event": "check",
+      "v": 1,
+      "violations": [],
+      "hints": 0
+    },
+    {
+      "ts": "2026-09-29T01:25:27+00:00",
+      "event": "new",
+      "v": 2,
+      "from": 1,
+      "note": "기록 화면에 월간 캘린더 추가"
+    },
+    {
+      "ts": "2026-09-29T01:26:05+00:00",
+      "event": "check",
+      "v": 2,
+      "violations": [],
+      "hints": 0
+    },
+    {
+      "ts": "2026-09-29T01:26:44+00:00",
+      "event": "check",
+      "v": 2,
+      "violations": [],
+      "hints": 0
+    },
+    {
+      "ts": "2026-09-29T01:48:19+00:00",
+      "event": "new",
+      "v": 3,
+      "from": 2,
+      "note": "빠진 상태 2개 추가: 나만 완료 / 찌른 뒤 대기중"
+    },
+    {
+      "ts": "2026-09-29T01:48:51+00:00",
+      "event": "check",
+      "v": 3,
+      "violations": [],
+      "hints": 0
+    },
+    {
+      "ts": "2026-09-29T01:53:02+00:00",
+      "event": "approve",
+      "v": 3,
+      "evidence": "verified"
+    },
+    {
+      "ts": "2026-09-29T02:19:41+00:00",
+      "event": "reopen",
+      "was": 3,
+      "reason": "오늘의 사진/영상을 스토리형 전체화면 뷰어로 보기 (지난 날은 앨범 유지)"
+    },
+    {
+      "ts": "2026-09-29T02:19:41+00:00",
+      "event": "new",
+      "v": 4,
+      "from": 3,
+      "note": "스토리 뷰어 추가"
+    },
+    {
+      "ts": "2026-09-29T02:20:02+00:00",
+      "event": "check",
+      "v": 4,
+      "violations": [],
+      "hints": 0
+    },
+    {
+      "ts": "2026-09-29T02:23:51+00:00",
+      "event": "new",
+      "v": 5,
+      "from": 4,
+      "note": "나만 쓰는 운동 목록 추가"
+    },
+    {
+      "ts": "2026-09-29T02:24:04+00:00",
+      "event": "check",
+      "v": 5,
+      "violations": [],
+      "hints": 0
+    },
+    {
+      "ts": "2026-09-29T02:25:21+00:00",
+      "event": "approve",
+      "v": 5,
+      "evidence": "verified"
+    }
+  ]
+}
