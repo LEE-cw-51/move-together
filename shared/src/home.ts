@@ -7,7 +7,7 @@ export type TodaySnapshot = {
 export type NudgePresentation = {
   visible: boolean;
   enabled: boolean;
-  label: "찌르기" | "오늘 찌르었어요";
+  label: "찌르기" | "오늘 찔렀어요";
 };
 
 export function nudgePresentation(input: {
@@ -19,7 +19,7 @@ export function nudgePresentation(input: {
     return null;
   }
   if (input.alreadyNudged) {
-    return { visible: true, enabled: false, label: "오늘 찌르었어요" };
+    return { visible: true, enabled: false, label: "오늘 찔렀어요" };
   }
   return { visible: true, enabled: true, label: "찌르기" };
 }

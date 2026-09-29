@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { View } from "react-native";
 import { router } from "expo-router";
 import { Button } from "@/components/Button";
+import { PairDot } from "@/components/PairDot";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/components/theme";
+import { TextField } from "@/components/TextField";
+import { ThemedText } from "@/components/ThemedText";
 import { ApiError, api } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { spacing } from "@/theme";
 import type { PublicUser } from "@/types";
 
 export default function LoginScreen() {
@@ -54,57 +57,31 @@ export default function LoginScreen() {
 
   return (
     <Screen>
-      <View style={styles.center}>
-        <Text style={styles.kicker}>무브 투게더</Text>
-        <Text style={styles.title}>오늘 움직였는지{"\n"}서로 확인해요</Text>
-        <Text style={styles.body}>{message}</Text>
-        <TextInput
+      <View style={{ flex: 1, justifyContent: "center", gap: spacing.lg }}>
+        <PairDot me partner size={40} />
+        <View style={{ gap: spacing.sm }}>
+          <ThemedText variant="largeTitle">오늘 움직였는지{"\n"}서로 확인해요</ThemedText>
+          <ThemedText variant="callout" tone="muted">
+            {message}
+          </ThemedText>
+        </View>
+        <TextField
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
           placeholder="이메일"
-          placeholderTextColor={colors.muted}
-          style={styles.input}
           value={email}
           onChangeText={setEmail}
         />
-        <Button label={busy ? "보내는 중" : "로그인 링크 받기"} disabled={busy || email.trim().length < 3} onPress={requestLink} />
-        {devToken ? <Button label="개발용으로 로그인" tone="quiet" disabled={busy} onPress={() => verify(devToken)} /> : null}
+        <Button
+          label={busy ? "보내는 중" : "로그인 링크 받기"}
+          disabled={busy || email.trim().length < 3}
+          onPress={requestLink}
+        />
+        {devToken ? (
+          <Button label="개발용으로 로그인" variant="secondary" disabled={busy} onPress={() => verify(devToken)} />
+        ) : null}
       </View>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    gap: 14,
-  },
-  kicker: {
-    color: colors.accent,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  title: {
-    color: colors.text,
-    fontSize: 32,
-    lineHeight: 40,
-    fontWeight: "700",
-  },
-  body: {
-    color: colors.muted,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  input: {
-    backgroundColor: colors.card,
-    borderColor: colors.line,
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    minHeight: 52,
-    fontSize: 17,
-    color: colors.text,
-  },
-});

@@ -1,7 +1,9 @@
 import type { Hono } from "hono";
 import {
+  CUSTOM_EXERCISE_LIMIT,
   computeJointStreak,
-  parseExerciseTypes,
+  normalizeCustomLabel,
+  parseWorkoutSelection,
   seoulDateKey,
   validateNewMedia,
   type ExerciseCode,
@@ -78,7 +80,7 @@ function mapMembershipError(error: unknown): never {
   throw error;
 }
 
-async function requireUser(db: Db, authorization: string | undefined): Promise<UserRow> {
+export async function requireUser(db: Db, authorization: string | undefined): Promise<UserRow> {
   const token = authorization?.startsWith("Bearer ") ? authorization.slice("Bearer ".length).trim() : "";
   if (!token) throw new ApiError(401, "unauthorized", "로그인이 필요해요");
   const found = await db.query<UserRow>(
@@ -93,7 +95,7 @@ async function requireUser(db: Db, authorization: string | undefined): Promise<U
   return user;
 }
 
-function requireDisplayName(user: UserRow): void {
+export function requireDisplayName(user: UserRow): void {
   if (!user.display_name) {
     throw new ApiError(409, "display_name_required", "먼저 이름을 정해 주세요");
   }
@@ -106,6 +108,15 @@ async function assertMember(sql: Sql, userId: string, challengeId: string): Prom
   );
   if (member.rows.length === 0) {
     throw new ApiError(403, "forbidden", "이 운동의 구성원만 볼 수 있어요");
+  }
+}
+
+async function assertOwnExercises(sql: Sql, userId: string, labels: string[]): Promise<void> {
+  if (labels.length === 0) return;
+  const owned = await sql.query<{ label: string }>(`SELECT label FROM user_exercises WHERE user_id = $1`, [userId]);
+  const names = new Set(owned.rows.map((row) => row.label.toLowerCase()));
+  if (labels.some((label) => !names.has(label.toLowerCase()))) {
+    throw new ApiError(400, "invalid_custom_exercise", "내 운동 목록에 없는 운동이 있어요");
   }
 }
 
@@ -135,7 +146,7 @@ async function createInvite(sql: Sql, challengeId: string, userId: string) {
   throw new ApiError(500, "invite_code", "초대 코드를 만들지 못했어요");
 }
 
-async function activeChallengeId(sql: Sql, userId: string): Promise<string | null> {
+export async function activeChallengeId(sql: Sql, userId: string): Promise<string | null> {
   const rows = await sql.query<{ id: string }>(
     `SELECT c.id
      FROM challenges c
@@ -153,12 +164,13 @@ type WorkoutRow = {
   user_id: string;
   seoul_date: string;
   exercise_types: unknown;
+  custom_labels?: unknown;
   completed_at: Date | string | null;
 };
 
 async function loadWorkoutForMember(sql: Sql, workoutId: string, viewerId: string): Promise<WorkoutRow> {
   const found = await sql.query<WorkoutRow>(
-    `SELECT id, challenge_id, user_id, seoul_date::text AS seoul_date, exercise_types, completed_at
+    `SELECT id, challenge_id, user_id, seoul_date::text AS seoul_date, exercise_types, custom_labels, completed_at
      FROM workout_records
      WHERE id = $1`,
     [workoutId],
@@ -174,6 +186,7 @@ async function saveWorkout(
   user: UserRow,
   challengeId: string,
   types: ExerciseCode[],
+  customLabels: string[],
   pending: PendingPush[],
 ): Promise<{ id: string; createdCompletion: boolean }> {
   await assertMember(sql, user.id, challengeId);
@@ -194,14 +207,18 @@ async function saveWorkout(
              SELECT COALESCE(array_agg(value), '{}'::text[])
              FROM jsonb_array_elements_text($2::jsonb) AS value
            ),
+           custom_labels = (
+             SELECT COALESCE(array_agg(value), '{}'::text[])
+             FROM jsonb_array_elements_text($3::jsonb) AS value
+           ),
            updated_at = now(),
            completed_at = COALESCE(completed_at, now())
        WHERE id = $1`,
-      [recordId, JSON.stringify(types)],
+      [recordId, JSON.stringify(types), JSON.stringify(customLabels)],
     );
   } else {
     const inserted = await sql.query<{ id: string }>(
-      `INSERT INTO workout_records (challenge_id, user_id, seoul_date, exercise_types, completed_at)
+      `INSERT INTO workout_records (challenge_id, user_id, seoul_date, exercise_types, custom_labels, completed_at)
        VALUES (
          $1,
          $2,
@@ -210,10 +227,14 @@ async function saveWorkout(
            SELECT COALESCE(array_agg(value), '{}'::text[])
            FROM jsonb_array_elements_text($4::jsonb) AS value
          ),
+         (
+           SELECT COALESCE(array_agg(value), '{}'::text[])
+           FROM jsonb_array_elements_text($5::jsonb) AS value
+         ),
          now()
        )
        RETURNING id`,
-      [challengeId, user.id, today, JSON.stringify(types)],
+      [challengeId, user.id, today, JSON.stringify(types), JSON.stringify(customLabels)],
     );
     recordId = inserted.rows[0]!.id;
   }
@@ -282,7 +303,7 @@ async function saveWorkout(
       userId: user.id,
       type: "workout_completed",
       challengeId,
-      payload: { seoulDate: today, exerciseTypes: types },
+      payload: { seoulDate: today, exerciseTypes: types, customLabels },
     });
     const nudged = await sql.query(
       `SELECT 1 FROM nudges WHERE challenge_id = $1 AND receiver_id = $2 AND seoul_date = $3 LIMIT 1`,
@@ -388,6 +409,50 @@ export function registerRoutes(app: Hono, db: Db): void {
       [user.id, displayName],
     );
     return c.json({ user: publicUser(updated.rows[0]!) });
+  });
+
+  app.get("/me/exercises", async (c) => {
+    const user = await requireUser(db, c.req.header("authorization"));
+    const rows = await db.query<{ id: string; label: string }>(
+      `SELECT id, label FROM user_exercises WHERE user_id = $1 ORDER BY created_at ASC`,
+      [user.id],
+    );
+    return c.json({ exercises: rows.rows });
+  });
+
+  app.post("/me/exercises", async (c) => {
+    const user = await requireUser(db, c.req.header("authorization"));
+    const body = await c.req.json().catch(() => ({}));
+    const label = normalizeCustomLabel(body.label);
+    if (!label) throw new ApiError(400, "invalid_custom_exercise", "이름은 1~10자로 적어 주세요");
+    const created = await db.transaction(async (sql) => {
+      const existing = await sql.query<{ id: string; label: string }>(
+        `SELECT id, label FROM user_exercises WHERE user_id = $1`,
+        [user.id],
+      );
+      if (existing.rows.some((row) => row.label.toLowerCase() === label.toLowerCase())) {
+        throw new ApiError(409, "duplicate_exercise", "이미 있는 운동이에요");
+      }
+      if (existing.rows.length >= CUSTOM_EXERCISE_LIMIT) {
+        throw new ApiError(409, "exercise_limit", `내 운동은 ${CUSTOM_EXERCISE_LIMIT}개까지 만들 수 있어요`);
+      }
+      const inserted = await sql.query<{ id: string; label: string }>(
+        `INSERT INTO user_exercises (user_id, label) VALUES ($1, $2) RETURNING id, label`,
+        [user.id, label],
+      );
+      return inserted.rows[0]!;
+    });
+    return c.json(created, 201);
+  });
+
+  app.delete("/me/exercises/:id", async (c) => {
+    const user = await requireUser(db, c.req.header("authorization"));
+    const removed = await db.query(`DELETE FROM user_exercises WHERE id = $1 AND user_id = $2 RETURNING id`, [
+      c.req.param("id"),
+      user.id,
+    ]);
+    if (removed.rows.length === 0) throw new ApiError(404, "not_found", "운동을 찾을 수 없어요");
+    return c.json({ ok: true });
   });
 
   app.post("/me/push-token", async (c) => {
@@ -540,6 +605,7 @@ export function registerRoutes(app: Hono, db: Db): void {
       display_name: string;
       record_id: string | null;
       exercise_types: unknown;
+      custom_labels: unknown;
       completed_at: Date | string | null;
       media_count: string | number;
     }>(
@@ -547,6 +613,7 @@ export function registerRoutes(app: Hono, db: Db): void {
               u.display_name,
               wr.id AS record_id,
               wr.exercise_types,
+              wr.custom_labels,
               wr.completed_at,
               COALESCE(mc.media_count, 0)::text AS media_count
        FROM challenge_members cm
@@ -599,6 +666,7 @@ export function registerRoutes(app: Hono, db: Db): void {
         completed: member.completed_at != null,
         recordId: member.record_id,
         exerciseTypes: member.completed_at ? asTextArray(member.exercise_types) : [],
+        customLabels: member.completed_at ? (asTextArray(member.custom_labels) as string[]) : [],
         mediaCount: Number(member.media_count ?? 0),
       },
     }));
@@ -634,12 +702,13 @@ export function registerRoutes(app: Hono, db: Db): void {
     const user = await requireUser(db, c.req.header("authorization"));
     requireDisplayName(user);
     const body = await c.req.json().catch(() => ({}));
-    const parsed = parseExerciseTypes(body.exerciseTypes);
+    const parsed = parseWorkoutSelection(body.exerciseTypes, body.customLabels);
     if (!parsed.ok) throw new ApiError(400, parsed.code, parsed.message);
     const pending: PendingPush[] = [];
-    const saved = await db.transaction(async (sql) =>
-      saveWorkout(sql, user, c.req.param("id"), parsed.types, pending),
-    );
+    const saved = await db.transaction(async (sql) => {
+      await assertOwnExercises(sql, user.id, parsed.customLabels);
+      return saveWorkout(sql, user, c.req.param("id"), parsed.types, parsed.customLabels, pending);
+    });
     await flushPushes(db, pending);
     return c.json(saved, saved.createdCompletion ? 201 : 200);
   });
@@ -648,10 +717,11 @@ export function registerRoutes(app: Hono, db: Db): void {
     const user = await requireUser(db, c.req.header("authorization"));
     requireDisplayName(user);
     const body = await c.req.json().catch(() => ({}));
-    const parsed = parseExerciseTypes(body.exerciseTypes);
+    const parsed = parseWorkoutSelection(body.exerciseTypes, body.customLabels);
     if (!parsed.ok) throw new ApiError(400, parsed.code, parsed.message);
     const today = seoulDateKey();
     await db.transaction(async (sql) => {
+      await assertOwnExercises(sql, user.id, parsed.customLabels);
       const workout = await loadWorkoutForMember(sql, c.req.param("id"), user.id);
       if (workout.user_id !== user.id) throw new ApiError(403, "forbidden", "내 기록만 수정할 수 있어요");
       if (dateKey(workout.seoul_date) !== today) {
@@ -663,9 +733,13 @@ export function registerRoutes(app: Hono, db: Db): void {
                SELECT COALESCE(array_agg(value), '{}'::text[])
                FROM jsonb_array_elements_text($2::jsonb) AS value
              ),
+             custom_labels = (
+               SELECT COALESCE(array_agg(value), '{}'::text[])
+               FROM jsonb_array_elements_text($3::jsonb) AS value
+             ),
              updated_at = now()
          WHERE id = $1`,
-        [workout.id, JSON.stringify(parsed.types)],
+        [workout.id, JSON.stringify(parsed.types), JSON.stringify(parsed.customLabels)],
       );
     });
     return c.json({ ok: true });
@@ -704,6 +778,7 @@ export function registerRoutes(app: Hono, db: Db): void {
       displayName: owner.rows[0]?.display_name ?? "",
       seoulDate: dateKey(workout.seoul_date),
       exerciseTypes: asTextArray(workout.exercise_types),
+      customLabels: asTextArray(workout.custom_labels) as string[],
       completedAt: iso(workout.completed_at),
       frozen: dateKey(workout.seoul_date) !== today,
       canReact: workout.user_id !== user.id,
@@ -721,6 +796,75 @@ export function registerRoutes(app: Hono, db: Db): void {
         mine: Boolean(byType.get(type)?.mine),
       })),
     });
+  });
+
+  app.get("/challenges/:id/history", async (c) => {
+    const user = await requireUser(db, c.req.header("authorization"));
+    requireDisplayName(user);
+    const challengeId = c.req.param("id");
+    const month = c.req.query("month") ?? seoulDateKey().slice(0, 7);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      throw new ApiError(400, "invalid_month", "달을 확인해 주세요");
+    }
+    await assertMember(db, user.id, challengeId);
+    const [year, monthNumber] = month.split("-").map(Number);
+    const first = `${month}-01`;
+    const next =
+      monthNumber === 12 ? `${year + 1}-01-01` : `${year}-${String(monthNumber + 1).padStart(2, "0")}-01`;
+    const members = await db.query<{ user_id: string; display_name: string }>(
+      `SELECT u.id AS user_id, u.display_name
+       FROM challenge_members cm
+       JOIN users u ON u.id = cm.user_id
+       WHERE cm.challenge_id = $1
+       ORDER BY cm.joined_at ASC`,
+      [challengeId],
+    );
+    const records = await db.query<{
+      id: string;
+      user_id: string;
+      seoul_date: string;
+      exercise_types: unknown;
+      custom_labels: unknown;
+      media_count: string | number;
+      thumb_url: string | null;
+    }>(
+      `SELECT wr.id,
+              wr.user_id,
+              wr.seoul_date::text AS seoul_date,
+              wr.exercise_types,
+              wr.custom_labels,
+              (SELECT COUNT(*) FROM media m WHERE m.workout_record_id = wr.id)::text AS media_count,
+              (SELECT m.url FROM media m
+                WHERE m.workout_record_id = wr.id AND m.type = 'image'
+                ORDER BY m.created_at ASC LIMIT 1) AS thumb_url
+       FROM workout_records wr
+       WHERE wr.challenge_id = $1
+         AND wr.completed_at IS NOT NULL
+         AND wr.seoul_date >= $2::date
+         AND wr.seoul_date < $3::date
+       ORDER BY wr.seoul_date ASC`,
+      [challengeId, first, next],
+    );
+    const byDate = new Map<string, typeof records.rows>();
+    for (const row of records.rows) {
+      const date = dateKey(row.seoul_date);
+      byDate.set(date, [...(byDate.get(date) ?? []), row]);
+    }
+    const days = [...byDate.entries()].map(([date, rows]) => ({
+      date,
+      mutual: members.rows.length > 1 && members.rows.every((member) => rows.some((row) => row.user_id === member.user_id)),
+      members: rows.map((row) => ({
+        userId: row.user_id,
+        displayName: members.rows.find((member) => member.user_id === row.user_id)?.display_name ?? "",
+        isMe: row.user_id === user.id,
+        recordId: row.id,
+        exerciseTypes: asTextArray(row.exercise_types),
+        customLabels: asTextArray(row.custom_labels) as string[],
+        mediaCount: Number(row.media_count ?? 0),
+        thumbUrl: row.thumb_url,
+      })),
+    }));
+    return c.json({ month, days });
   });
 
   app.post("/workouts/:id/media", async (c) => {

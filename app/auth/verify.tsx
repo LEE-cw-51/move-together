@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { colors } from "@/components/theme";
+import { ThemedText } from "@/components/ThemedText";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { spacing, useColors } from "@/theme";
 import type { PublicUser } from "@/types";
 
 export default function VerifyScreen() {
   const params = useLocalSearchParams<{ token?: string }>();
   const { signIn } = useSession();
+  const colors = useColors();
   const signInRef = useRef(signIn);
   signInRef.current = signIn;
   const [message, setMessage] = useState("로그인하는 중");
@@ -38,23 +40,9 @@ export default function VerifyScreen() {
   }, [params.token]);
 
   return (
-    <View style={styles.screen}>
-      <ActivityIndicator color={colors.accent} />
-      <Text style={styles.text}>{message}</Text>
+    <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", gap: spacing.md }}>
+      <ActivityIndicator color={colors.me} />
+      <ThemedText variant="callout">{message}</ThemedText>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  text: {
-    color: colors.text,
-    fontSize: 16,
-  },
-});

@@ -2,7 +2,9 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Db } from "./db";
 import { ApiError } from "./errors";
+import { registerDevRoutes } from "./dev";
 import { registerRoutes } from "./http";
+import { isProduction } from "./mail";
 
 export function createApp(db: Db): Hono {
   const app = new Hono();
@@ -16,5 +18,6 @@ export function createApp(db: Db): Hono {
   });
   app.notFound((c) => c.json({ error: { code: "not_found", message: "요청을 찾을 수 없어요" } }, 404));
   registerRoutes(app, db);
+  if (!isProduction()) registerDevRoutes(app, db);
   return app;
 }

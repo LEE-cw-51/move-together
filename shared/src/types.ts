@@ -13,6 +13,7 @@ export type TodayStatus = {
   completed: boolean;
   recordId: string | null;
   exerciseTypes: ExerciseCode[];
+  customLabels: string[];
   mediaCount: number;
 };
 
@@ -74,11 +75,39 @@ export type WorkoutDetail = {
   displayName: string;
   seoulDate: string;
   exerciseTypes: ExerciseCode[];
+  customLabels: string[];
   completedAt: string | null;
   frozen: boolean;
   canReact: boolean;
   media: MediaItem[];
   reactions: ReactionSummary[];
+};
+
+export type UserExercise = {
+  id: string;
+  label: string;
+};
+
+export type HistoryMember = {
+  userId: string;
+  displayName: string;
+  isMe: boolean;
+  recordId: string;
+  exerciseTypes: ExerciseCode[];
+  customLabels: string[];
+  mediaCount: number;
+  thumbUrl: string | null;
+};
+
+export type HistoryDay = {
+  date: string;
+  mutual: boolean;
+  members: HistoryMember[];
+};
+
+export type HistoryResponse = {
+  month: string;
+  days: HistoryDay[];
 };
 
 export type NotificationItem = {

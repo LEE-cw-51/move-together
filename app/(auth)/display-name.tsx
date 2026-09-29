@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { View } from "react-native";
 import { router } from "expo-router";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/components/theme";
+import { TextField } from "@/components/TextField";
+import { ThemedText } from "@/components/ThemedText";
 import { ApiError, api } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { spacing } from "@/theme";
 import type { PublicUser } from "@/types";
 
 export default function DisplayNameScreen() {
@@ -34,50 +36,21 @@ export default function DisplayNameScreen() {
 
   return (
     <Screen>
-      <View style={styles.center}>
-        <Text style={styles.title}>어떻게 부를까요?</Text>
-        <Text style={styles.body}>이 이름이 함께하는 사람에게 보여요.</Text>
-        <TextInput
-          maxLength={20}
-          placeholder="이름"
-          placeholderTextColor={colors.muted}
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-        />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+      <View style={{ flex: 1, justifyContent: "center", gap: spacing.lg }}>
+        <View style={{ gap: spacing.sm }}>
+          <ThemedText variant="largeTitle">어떻게 부를까요?</ThemedText>
+          <ThemedText variant="callout" tone="muted">
+            이 이름이 함께하는 사람에게 보여요.
+          </ThemedText>
+        </View>
+        <TextField maxLength={20} placeholder="이름" value={name} onChangeText={setName} />
+        {error ? (
+          <ThemedText variant="footnote" tone="danger">
+            {error}
+          </ThemedText>
+        ) : null}
         <Button label={busy ? "저장 중" : "시작하기"} disabled={busy || name.trim().length < 1} onPress={save} />
       </View>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    gap: 14,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  body: {
-    fontSize: 16,
-    color: colors.muted,
-  },
-  input: {
-    backgroundColor: colors.card,
-    borderColor: colors.line,
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    minHeight: 52,
-    fontSize: 17,
-    color: colors.text,
-  },
-  error: {
-    color: colors.accent,
-  },
-});
